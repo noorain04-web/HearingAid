@@ -211,10 +211,17 @@ class MainActivity : Activity() {
             updateStatus("Running. Requested input: built-in phone mic. Requested output: ${target?.productName ?: "system media route"}. Verify actual routing by testing.")
             worker = thread(name = "HearLinkAudioBridge", isDaemon = true) {
                 val samples = ShortArray(1024)
+                var reportedRoute = false
                 try {
                     while (running.get()) {
                         val count = rec.read(samples, 0, samples.size, AudioRecord.READ_BLOCKING)
                         if (count <= 0) continue
+                        if (!reportedRoute) {
+                            val actualInput = rec.routedDevice?.let { it.productName.toString() + " (type " + it.type + ")" } ?: "not reported"
+                            val actualOutput = track.routedDevice?.let { it.productName.toString() + " (type " + it.type + ")" } ?: "not reported"
+                            updateStatus("Android reports input: " + actualInput + "; output: " + actualOutput + ". If input is not the phone mic, stop and check Call audio/profile settings.")
+                            reportedRoute = true
+                        }
                         var peak = 0
                         for (i in 0 until count) {
                             val raw = samples[i].toInt()
